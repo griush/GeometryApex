@@ -1,14 +1,29 @@
 const canvas = document.getElementById("main-canvas")
 const ctx = canvas.getContext("2d")
 
+// Utils
+function getRandomInt(min, max) {
+    const minCeiled = Math.ceil(min);
+    const maxFloored = Math.floor(max);
+    return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
+}
+
 let player = {
     pos_x: 0,
     pos_y: 0,
     orientation: 0.0,
-    speed: 300,
+    speed: 290,
 }
 
+let projectiles = [];
+
+let enemies = [];
+let enemySpawnRate = 4.0;
+let lastEnemySpawnTime = 0.0
+const enemySize = 35;
+
 let lastFrameTime = 0.0;
+let spacePressed = false;
 
 function drawBackground() {
     const centerX = canvas.width / 2;
@@ -21,6 +36,80 @@ function drawBackground() {
     ctx.fill();
 }
 
+function shoot() {
+    projectiles.push({
+        pos_x: player.pos_x,
+        pos_y: player.pos_y,
+        orientation: player.orientation,
+        speed: 1000,
+    });
+}
+
+function updateProjectiles(dt) {
+    projectiles.forEach((projectile) => {
+        const x = Math.sin(projectile.orientation);
+        const y = -Math.cos(projectile.orientation);
+
+        projectile.pos_x += x * dt * projectile.speed;
+        projectile.pos_y += y * dt * projectile.speed;
+
+        const distanceFormCenter = Math.sqrt((projectile.pos_x - canvas.width / 2) *
+            (projectile.pos_x - canvas.width / 2) +
+            (projectile.pos_y - canvas.height / 2) *
+            (projectile.pos_y - canvas.height / 2));
+
+        if (distanceFormCenter > 310) {
+            projectiles.shift();
+        }
+    });
+}
+
+function drawProjectiles() {
+    projectiles.forEach(projectile => {
+        const radius = 10;
+
+        ctx.beginPath();
+        ctx.arc(projectile.pos_x, projectile.pos_y, radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = "#507fe5";
+        ctx.fill();
+    });
+}
+
+function spawnEnemy() {
+    if ((performance.now() - lastEnemySpawnTime) / 1000 > enemySpawnRate) {
+        enemies.push({
+            pos_x: getRandomInt((canvas.width / 2) - 200, (canvas.width / 2) + 200),
+            pos_y: getRandomInt((canvas.height / 2) - 200, (canvas.height / 2) + 200),
+            speed: 100,
+        });
+
+        lastEnemySpawnTime = performance.now();
+        if (enemySpawnRate > 0.5) {
+            enemySpawnRate -= 0.1;
+        }
+    }
+}
+
+function updateEnemies(dt) {
+    enemies.forEach(enemy => {
+        let x = player.pos_x - enemy.pos_x;
+        let y = player.pos_y - enemy.pos_y;
+
+        x = x / Math.sqrt(x * x + y * y);
+        y = y / Math.sqrt(x * x + y * y);
+
+        enemy.pos_x += x * dt * enemy.speed;
+        enemy.pos_y += y * dt * enemy.speed;
+    });
+}
+
+function drawEnemies() {
+    enemies.forEach(enemy => {
+        ctx.fillStyle = "#ff6b6b";
+        ctx.fillRect(enemy.pos_x - enemySize / 2, enemy.pos_y + enemySize / 2, enemySize, enemySize);
+    });
+}
+
 function updatePlayer(dt) {
     const x = Math.sin(player.orientation);
     const y = -Math.cos(player.orientation);
@@ -29,10 +118,10 @@ function updatePlayer(dt) {
     player.pos_y += y * dt * player.speed;
 
     // Check if outside of bounds
-    const playerDistanceFormCenter = Math.sqrt((player.pos_x - canvas.width / 2) * 
-                                               (player.pos_x - canvas.width / 2) +
-                                               (player.pos_y - canvas.height / 2) *
-                                               (player.pos_y - canvas.height / 2));
+    const playerDistanceFormCenter = Math.sqrt((player.pos_x - canvas.width / 2) *
+        (player.pos_x - canvas.width / 2) +
+        (player.pos_y - canvas.height / 2) *
+        (player.pos_y - canvas.height / 2));
     if (playerDistanceFormCenter > 280) {
         window.location.replace("gameover.html");
     }
@@ -70,17 +159,42 @@ function drawPlayer() {
     ctx.fill();
 }
 
+function resolveCollisions() {
+    // Projectile-enemy
+    projectiles.forEach(projectile => {
+        enemies.forEach((enemy, index) => {
+            if (Math.abs(projectile.pos_x - enemy.pos_x) < 30 && Math.abs(projectile.pos_y - enemy.pos_y) < 30) {
+                projectiles.shift();
+                enemies.splice(index, 1);
+            }
+        });
+    });
+
+    // Player-enemy
+    enemies.forEach((enemy) => {
+        if (Math.abs(player.pos_x - enemy.pos_x) < 30 && Math.abs(player.pos_y - enemy.pos_y) < 30) {
+            window.location.replace("gameover.html");
+        }
+    });
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBackground();
     drawPlayer();
+    drawProjectiles();
+    drawEnemies();
 }
 
 function gameLoop() {
     const dt = (performance.now() - lastFrameTime) / 1000;
     lastFrameTime = performance.now();
     updatePlayer(dt);
+    updateProjectiles(dt);
+    updateEnemies(dt);
+    spawnEnemy();
     draw();
+    resolveCollisions();
     window.requestAnimationFrame(gameLoop);
 }
 
@@ -94,6 +208,19 @@ function init() {
         const y = e.offsetY - player.pos_y;
         let angleInRadians = Math.atan2(x, -y);
         player.orientation = angleInRadians;
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === " " && !spacePressed) {
+            spacePressed = true;
+            shoot();
+        }
+    });
+
+    document.addEventListener("keyup", (e) => {
+        if (e.key === " ") {
+            spacePressed = false;
+        }
     });
     window.requestAnimationFrame(gameLoop);
 }

@@ -1,0 +1,53 @@
+body {
+    font-family: "Motserrat", system-ui, sans-serif;
+    background-color: #507fe5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.game-over {
+    display: flex;
+    flex-flow: column;
+    justify-content: center;
+    align-items: center;
+    margin: 20px;
+}
+
+.title {
+    color: whitesmoke;
+    font-size: xx-large;
+    margin-top: 0;
+}
+
+.subtitle {
+    color: whitesmoke;
+    font-size: large;
+    margin-top: 0;
+}
+
+.button {
+    color: whitesmoke;
+    text-decoration: none;
+
+    padding: 10px;
+    margin: 5px;
+    margin-top: 10px;
+
+    border-style: solid;
+    border-width: 2px;
+    border-color: whitesmoke;
+    border-radius: 2px;
+
+    transition: 200ms linear;
+}
+
+.button:hover {
+    background-color: whitesmoke;
+    color: #507fe5;
+
+    transition: 200ms linear;
+}
